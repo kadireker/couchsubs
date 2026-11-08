@@ -43,6 +43,10 @@ public sealed record UserSettings
     public DubbingSettings Dubbing { get; init; } = new();
     /// <summary>Anahtar girildiyse çeviri DeepL'le yapılır; kapalıysa ya da DeepL'e ulaşılamazsa cihaz üstü model.</summary>
     public bool OnlineTranslation { get; init; }
+    /// <summary>Görüntü PS5'ten mi, bu bilgisayardaki bir pencereden mi (Xbox uygulaması, tarayıcı, yakalama kartı, PC oyunu) gelir.</summary>
+    public VideoSource Source { get; init; } = VideoSource.Ps5;
+    /// <summary>Pencere kaynağında Türkçe altyazı bilgisayar ekranında da, oyunun üstünde gösterilir.</summary>
+    public bool ShowOnPc { get; init; } = true;
 
     /// <summary>Ek bölgenin sayısı; <see cref="ExtraRegion"/> 1..ExtraRegionCount arasında çalışır.</summary>
     public const int ExtraRegionCount = 3;
@@ -69,6 +73,29 @@ public sealed record UserSettings
         _ => this,
     };
 }
+
+/// <summary>Görüntünün geldiği yer.</summary>
+public enum VideoSource
+{
+    /// <summary>PS5'e Uzaktan Oynatma bağlantısı (PSN hesabı ve kayıtlı PS5 gerekir).</summary>
+    Ps5,
+    /// <summary>Bu bilgisayardaki bir pencere (Xbox uygulaması, xbox.com/play, yakalama kartı önizlemesi, PC oyunu); PS5 ve TV gerekmez.</summary>
+    Window,
+}
+
+/// <summary>Kullanıcının seçtiği, görüntüsü okunacak pencere (gerçekte Windows.Graphics.Capture öğesi).</summary>
+public interface ICaptureTarget
+{
+    /// <summary>Pencerenin başlığı (durum satırında gösterilir).</summary>
+    string Title { get; }
+    /// <summary>Pencere kapandı; yeniden seçilmesi gerekir.</summary>
+    bool IsClosed { get; }
+    /// <summary>Pencerenin karelerini veren yeni oturum; aynı pencere için birden çok kez çağrılabilir.</summary>
+    IStreamSession MakeStream();
+}
+
+/// <summary>Bilgisayardaki altyazı katmanına giden altyazı; <c>Box</c> oyundaki İngilizce altyazının karedeki yeri.</summary>
+public sealed record PcSubtitle(string Text, int DurationMs, TextBox? Box = null);
 
 /// <summary>Tek seferlik çevirinin sonucunun gösterileceği yer.</summary>
 public enum ResultTarget { Tv, Pc, Both }
@@ -121,6 +148,8 @@ public interface IAppServices
     /// <summary>TV ile eşleşir ve TV uygulamasını sunucu adresiyle başlatmayı dener.</summary>
     Task<TvPairing> PairTvAsync(LgTv tv, string? key, string server);
     IStreamSession MakeStream(RegisteredConsole console, byte[] accountId);
+    /// <summary>Windows'un pencere seçicisini açar; kullanıcı vazgeçerse ya da bu bilgisayar desteklemiyorsa null.</summary>
+    Task<ICaptureTarget?> PickWindowAsync() => Task.FromResult<ICaptureTarget?>(null);
     /// <param name="appConnected">TV uygulaması bilgisayara bağlı mı (Samsung'da bağlıyken TV'ye dokunulmaz).</param>
     /// <param name="onMoved">TV ağda yeni bir adreste bulununca çağrılır.</param>
     IKeeper MakeKeeper(LgTv tv, string? key, IReadOnlyDictionary<string, string> parameters, Func<bool> appConnected, Action<LgTv> onMoved);

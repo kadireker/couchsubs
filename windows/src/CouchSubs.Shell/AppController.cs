@@ -57,6 +57,9 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
     private SubtitleServer server = new(DefaultServerPort);
     private bool serverStarted;
     private IStreamSession? session;
+    /// <summary>Pencere kaynağında seçilen pencere; uygulama açık kaldıkça hatırlanır, kapanınca yeniden sorulur.</summary>
+    private ICaptureTarget? captureTarget;
+    private bool choosingWindow;
     private IKeeper? keeper;
     private SubtitlePipeline? pipeline;
     /// <summary>Hattın yazı okuyucusu; ek bölgelerin tek seferlik okuması da bunu kullanır.</summary>
@@ -89,8 +92,8 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         console = store.Load<RegisteredConsole>(StoreKeys.Console);
         tv = store.Load<LgTv>(StoreKeys.Tv);
         settings = settingsStore.Load();
-        var ready = accountId is not null && console is not null && tv is not null && store.Load<string>(StoreKeys.TvKey) is not null;
-        step = ready ? OnboardingStep.Done : OnboardingStep.Welcome;
+        // Pencere kaynağında PS5, hesap ve TV gerekmez.
+        step = Ps5Ready || settings.Source == VideoSource.Window ? OnboardingStep.Done : OnboardingStep.Welcome;
         server.ClientsChanged += OnClientsChanged;
     }
 
@@ -105,8 +108,21 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
     public bool IsRunning { get => isRunning; private set => Set(ref isRunning, value, [nameof(Ps5StatusText), nameof(Ps5Tone), nameof(TvTone)]); }
     public bool IsStarting { get => isStarting; private set => Set(ref isStarting, value); }
     public SessionState SessionState { get => sessionState; private set => Set(ref sessionState, value, [nameof(Ps5StatusText), nameof(Ps5Tone)]); }
-    public string Ps5StatusText => StatusText(sessionState, isRunning, text);
+    /// <summary>Görüntü kaynağının (PS5 ya da pencere) durum metni.</summary>
+    public string Ps5StatusText => IsWindowSource ? WindowStatusText() : StatusText(sessionState, isRunning, text);
     public StatusTone Ps5Tone => Ps5ToneFor(sessionState, isRunning);
+    /// <summary>Görüntü bu bilgisayardaki bir pencereden geliyor.</summary>
+    public bool IsWindowSource => settings.Source == VideoSource.Window;
+    /// <summary>Durum satırında kaynağın adı: "PS5" ya da "Pencere".</summary>
+    public string SourceTitle => IsWindowSource ? text["Window"] : "PS5";
+    /// <summary>Seçili pencerenin başlığı; seçilmediyse null.</summary>
+    public string? CaptureTitle => captureTarget?.Title;
+    /// <summary>PS5 kaynağında ya da pencere kaynağında TV kuruluysa TV durumu gösterilir.</summary>
+    public bool ShowsTvStatus => !IsWindowSource || tv is not null;
+    /// <summary>PS5 için gereken her şey (hesap, kayıtlı PS5, eşleşmiş TV) hazır.</summary>
+    public bool Ps5Ready => accountId is not null && console is not null && tv is not null && store.Load<string>(StoreKeys.TvKey) is not null;
+    /// <summary>Altyazı bilgisayardaki katmanda da gösterilir (pencere kaynağı ve ayar açık).</summary>
+    public bool ShowsSubtitlesOnPc => IsWindowSource && settings.ShowOnPc;
     public int TvClients { get => tvClients; private set => Set(ref tvClients, value, [nameof(TvTone), nameof(TvStatusText)]); }
     public StatusTone TvTone => TvToneFor(tvClients, isRunning);
     public string TvStatusText => tvClients > 0 ? text["Connected"] : text["Waiting for the TV app"];
@@ -139,6 +155,15 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
             if (!Set(ref settings, value)) return;
             settingsStore.Save(value);
             server.SendStyle(value.Style);
+            if (old.Source != value.Source)
+            {
+                // Kaynak değişince süren çeviri durur; yeni kaynakla yeniden başlatılır.
+                if (isRunning) Stop();
+                Changed(nameof(IsWindowSource), nameof(SourceTitle), nameof(Ps5StatusText), nameof(ShowsTvStatus), nameof(ShowsSubtitlesOnPc));
+            }
+            if (old.ShowOnPc != value.ShowOnPc) Changed(nameof(ShowsSubtitlesOnPc));
+            // Katman kapatıldıysa ekrandaki altyazı da kalkar.
+            if (old is { Source: VideoSource.Window, ShowOnPc: true } && !ShowsSubtitlesOnPc) post(() => PcSubtitleChanged?.Invoke(null));
             if (old.Dubbing != value.Dubbing) DubbingSettingsChanged(old.Dubbing);
             if (isRunning && (old.SourceLanguage != value.SourceLanguage || old.TargetLanguage != value.TargetLanguage
                               || old.OnlineTranslation != value.OnlineTranslation))
@@ -156,7 +181,8 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         OnboardingStep.Welcome or OnboardingStep.SecondAccount or OnboardingStep.Test => true,
         OnboardingStep.PsnLogin => accountId is not null,
         OnboardingStep.Console => console is not null,
-        OnboardingStep.Tv => tv is not null && store.Load<string>(StoreKeys.TvKey) is not null,
+        // Pencere kaynağında TV isteğe bağlıdır (monitörde oynayan TV'siz devam eder).
+        OnboardingStep.Tv => IsWindowSource || (tv is not null && store.Load<string>(StoreKeys.TvKey) is not null),
         OnboardingStep.Translation => ModelInstalled,
         _ => false,
     };
@@ -164,14 +190,43 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
     public void Advance()
     {
         if (!CanAdvance || step == OnboardingStep.Done) return;
-        // Model büyük; kullanıcı diğer adımlarla uğraşırken arka planda iner.
-        if (step == OnboardingStep.Welcome) StartModelDownload();
-        Step = step + 1;
+        if (step == OnboardingStep.Welcome)
+        {
+            // Model büyük; kullanıcı diğer adımlarla uğraşırken arka planda iner.
+            StartModelDownload();
+            // Hoş geldin ekranında Devam, PS5 kurulumudur (pencere için ayrı düğme var).
+            if (IsWindowSource) Settings = settings with { Source = VideoSource.Ps5 };
+        }
+        // Pencere kaynağında TV yoksa deneme altyazısını gösterecek TV de yoktur.
+        Step = IsWindowSource && step == OnboardingStep.Translation && tv is null ? OnboardingStep.Done : step + 1;
     }
 
     public void Back()
     {
-        if (step > OnboardingStep.Welcome) Step = step - 1;
+        // Pencere kaynağında PS5 adımları atlanmıştı; TV adımından hoş geldin ekranına dönülür.
+        if (IsWindowSource && step == OnboardingStep.Tv) Step = OnboardingStep.Welcome;
+        else if (step > OnboardingStep.Welcome) Step = step - 1;
+    }
+
+    /// <summary>
+    /// Hoş geldin ekranındaki "Bu bilgisayardaki bir pencereyi kullan": PSN, PS5 ve TV kurulumu atlanır; TV adımı
+    /// isteğe bağlı olarak gösterilir (Xbox TV'ye bağlıysa TV de kurulabilir).
+    /// </summary>
+    public void UseWindowSource()
+    {
+        StartModelDownload();
+        Settings = settings with { Source = VideoSource.Window, ShowOnPc = true };
+        Step = OnboardingStep.Tv;
+    }
+
+    /// <summary>
+    /// Ayarlardaki görüntü kaynağı seçimi. PS5'e geçilip PS5 henüz kurulmadıysa kurulum sihirbazı açılır.
+    /// </summary>
+    public void ChooseSource(VideoSource source)
+    {
+        if (settings.Source == source) return;
+        Settings = settings with { Source = source };
+        if (source == VideoSource.Ps5 && !Ps5Ready) Step = OnboardingStep.Welcome;
     }
 
     public async Task CompletePsnLoginAsync(Uri redirect)
@@ -215,7 +270,7 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         store.Save(StoreKeys.Tv, target);
         store.Save(StoreKeys.TvKey, pairing.Key);
         tvAppMissing = !pairing.Launched;
-        Changed(nameof(Tv), nameof(CanAdvance), nameof(CanInstallTvApp));
+        Changed(nameof(Tv), nameof(CanAdvance), nameof(CanInstallTvApp), nameof(ShowsTvStatus));
         if (target.Brand == TvBrand.Lg) await RefreshTvAppAsync();
         // Samsung girişi ya da Android onayı dakikalar sürebilir; eşleşme beklemesin.
         else _ = RefreshTvAppAsync();
@@ -510,7 +565,7 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         // Oyunda henüz altyazı görülmediyse altyazı bölgesinin altına yakın tipik bir yer kullanılır.
         var region = settings.Region;
         var box = lastSubtitleBox ?? new TextBox(0.3, region.Bottom - 0.1, 0.7, region.Bottom - 0.03);
-        server.SendSubtitle(text["This is a test subtitle. Can you see it on top of the game?"], 8000, box);
+        SendSubtitle(text["This is a test subtitle. Can you see it on top of the game?"], 8000, box);
     }
 
     /// <summary>
@@ -525,10 +580,10 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         if (pause)
         {
             pipeline?.Reset();
-            server.Clear();
+            ClearSubtitle();
         }
         server.SendStyle(settings.Style);
-        server.SendSubtitle(text[pause ? "Subtitle translation paused" : "Subtitle translation resumed"], 1800);
+        SendSubtitle(text[pause ? "Subtitle translation paused" : "Subtitle translation resumed"], 1800);
     }
 
     /// <summary>Num 8: ayar ekranı, oyunun şu anki görüntüsünü yeniden alsın.</summary>
@@ -697,7 +752,10 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         tvAppMissing = false;
         TvApp = TvAppState.Unknown;
         Step = OnboardingStep.Welcome;
-        Changed(nameof(HasAccount), nameof(Console), nameof(Tv));
+        captureTarget = null;
+        Changed(nameof(HasAccount), nameof(Console), nameof(Tv), nameof(CaptureTitle), nameof(ShowsTvStatus));
+        // Kurulum baştan başlar; kaynak hoş geldin ekranında yeniden seçilir.
+        if (IsWindowSource) Settings = settings with { Source = VideoSource.Ps5 };
     }
 
     // --- Çeviri ---
@@ -705,10 +763,20 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
     public async Task StartAsync()
     {
         // Düğmeye iki kez basılması ya da beklerken tekrar çağrılması ikinci bir oturum açmaz.
-        if (isRunning || isStarting || console is null || accountId is null || tv is null) return;
+        if (isRunning || isStarting) return;
+        var window = IsWindowSource;
+        // PS5 kaynağında hesap, PS5 ve TV gerekir; pencere kaynağında hiçbiri gerekmez (TV varsa kullanılır).
+        if (!window && (console is null || accountId is null || tv is null)) return;
         IsStarting = true;
         try
         {
+            // Pencere seçilmediyse ya da kapandıysa önce Windows'un pencere seçicisi açılır; vazgeçilirse başlamaz.
+            if (window && captureTarget is not { IsClosed: false })
+            {
+                if (await services.PickWindowAsync() is not { } picked) return;
+                CaptureTarget = picked;
+            }
+
             RefreshTranslatorStatus();
             try { await StartServerAsync(); } catch { /* port açılamadıysa TV durumu "bekleniyor" kalır */ }
             server.SendStyle(settings.Style);
@@ -716,19 +784,19 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
             MakePipeline();
             if (settings.Dubbing.Enabled && DubbingInstalled) MakeDubber()?.Prepare();
 
-            var stream = services.MakeStream(console, accountId);
-            stream.StateChanged += state => post(() => SessionStateChanged(state));
-            stream.FrameReceived += HandleFrame;
-            stream.Start();
-            session = stream;
+            Attach(window ? captureTarget!.MakeStream() : services.MakeStream(console!, accountId!));
 
             // TV uygulamasını başlat ve açık tut; TV kapalıysa açıldığında bağlanır.
-            var running = server;
-            var tvKeeper = services.MakeKeeper(tv, store.Load<string>(StoreKeys.TvKey), new Dictionary<string, string> { ["server"] = ServerAddress(tv) },
-                () => running.ConnectedClients > 0, moved => post(() => TvMoved(moved)));
-            tvKeeper.Start(TimeSpan.FromSeconds(5));
-            keeper = tvKeeper;
-            _ = RefreshTvAppAsync();
+            if (tv is { } target)
+            {
+                var running = server;
+                var tvKeeper = services.MakeKeeper(target, store.Load<string>(StoreKeys.TvKey),
+                    new Dictionary<string, string> { ["server"] = ServerAddress(target) },
+                    () => running.ConnectedClients > 0, moved => post(() => TvMoved(moved)));
+                tvKeeper.Start(TimeSpan.FromSeconds(5));
+                keeper = tvKeeper;
+                _ = RefreshTvAppAsync();
+            }
 
             sleep.Begin();
             IsRunning = true;
@@ -739,11 +807,66 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         }
     }
 
+    /// <summary>Oturumun olaylarına bağlanır ve başlatır. Yerine yenisi geçmiş oturumun geç gelen durumu yok sayılır.</summary>
+    private void Attach(IStreamSession stream)
+    {
+        stream.StateChanged += state => post(() =>
+        {
+            if (ReferenceEquals(session, stream)) SessionStateChanged(state);
+        });
+        stream.FrameReceived += HandleFrame;
+        session = stream;
+        stream.Start();
+    }
+
+    private void DetachSession()
+    {
+        if (session is not { } stopping) return;
+        session = null;
+        stopping.FrameReceived -= HandleFrame;
+        stopping.Stop();
+        stopping.Dispose();
+    }
+
+    private ICaptureTarget? CaptureTarget
+    {
+        get => captureTarget;
+        set
+        {
+            captureTarget = value;
+            Changed(nameof(CaptureTitle), nameof(Ps5StatusText));
+        }
+    }
+
+    /// <summary>
+    /// "Pencere seç": Windows'un pencere seçicisini açar. Çeviri sürüyorsa okuma hemen yeni pencereye geçer;
+    /// sürmüyorsa pencere bir sonraki başlatmada kullanılır. Vazgeçilirse önceki pencere kalır.
+    /// </summary>
+    public async Task ChooseWindowAsync()
+    {
+        if (choosingWindow) return;
+        choosingWindow = true;
+        try
+        {
+            if (await services.PickWindowAsync() is not { } picked) return;
+            CaptureTarget = picked;
+            if (!isRunning || !IsWindowSource) return;
+            DetachSession();
+            pipeline?.Reset();
+            ClearSubtitle();
+            Attach(picked.MakeStream());
+        }
+        finally
+        {
+            choosingWindow = false;
+        }
+    }
+
     public void Stop()
     {
-        session?.Stop();
-        session?.Dispose();
-        session = null;
+        DetachSession();
+        // Bilgisayardaki katmanda altyazı kalmasın (TV uygulaması kendi süresiyle kaldırır).
+        if (isRunning && ShowsSubtitlesOnPc) post(() => PcSubtitleChanged?.Invoke(null));
         keeper?.Stop();
         keeper = null;
         pipeline?.Reset();
@@ -790,8 +913,18 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
             DisconnectKind.InUse => "Remote Play is in use on another device",
             DisconnectKind.Refused => "The PS5 refused the connection. Set up the PS5 again.",
             DisconnectKind.LoginPasscode => "The second user has a login passcode on the PS5. Turn it off in Settings › Users and Accounts.",
+            DisconnectKind.WindowClosed => "The window was closed. Choose a window again.",
             _ => "Reconnecting…",
         }];
+    }
+
+    /// <summary>Pencere kaynağının durum metni: okunurken pencerenin başlığı.</summary>
+    private string WindowStatusText()
+    {
+        if (sessionState.Phase == SessionPhase.Disconnected && sessionState.Reason?.Kind == DisconnectKind.WindowClosed && isRunning)
+            return text["The window was closed. Choose a window again."];
+        if (sessionState.Phase == SessionPhase.Connecting) return text["Connecting…"];
+        return captureTarget?.Title is { Length: > 0 } title ? title : text["No window chosen"];
     }
 
     public void Dispose()
@@ -812,7 +945,8 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         activeReader = reader;
         OcrMissing = reader is null || !services.HasOcrLanguage(settings.SourceLanguage);
         if (reader is null) return;
-        var built = new SubtitlePipeline(reader, MakeTranslator(), server, new ReadScheduler());
+        // Hattın gönderdiği her altyazı ve temizleme TV'ye ve bilgisayardaki katmana aynı anda gider.
+        var built = new SubtitlePipeline(reader, MakeTranslator(), new MirroredSender(this), new ReadScheduler());
         built.PairShown += (source, translation) =>
         {
             var box = built.LastBox;
@@ -898,9 +1032,38 @@ public sealed class AppController : INotifyPropertyChanged, IDisposable
         if (state.Phase == SessionPhase.Disconnected)
         {
             pipeline?.Reset();
-            server.Clear();
+            ClearSubtitle();
             dubber?.Stop();
         }
+    }
+
+    /// <summary>
+    /// Altyazı her seçili ekrana çıkar: TV uygulaması (ve OBS katmanı) sunucudan alır; pencere kaynağında bilgisayardaki
+    /// katman da <see cref="PcSubtitleChanged"/> ile alır.
+    /// </summary>
+    private void SendSubtitle(string message, int durationMs, TextBox? box = null)
+    {
+        server.SendSubtitle(message, durationMs, box);
+        if (ShowsSubtitlesOnPc) post(() => PcSubtitleChanged?.Invoke(new PcSubtitle(message, durationMs, box)));
+    }
+
+    private void ClearSubtitle()
+    {
+        server.Clear();
+        if (ShowsSubtitlesOnPc) post(() => PcSubtitleChanged?.Invoke(null));
+    }
+
+    /// <summary>
+    /// Bilgisayardaki altyazı katmanı: altyazı gelince gösterilir (kalma süresi ms), null gelince kaldırılır. Arayüz iş
+    /// parçacığında çağrılır; yalnız <see cref="ShowsSubtitlesOnPc"/> iken altyazı gelir.
+    /// </summary>
+    public event Action<PcSubtitle?>? PcSubtitleChanged;
+
+    /// <summary>Okuma hattının göndericisi; sunucu değişse de (port doluysa) güncel olanı kullanır.</summary>
+    private sealed class MirroredSender(AppController owner) : ISubtitleSender
+    {
+        public void SendSubtitle(string text, int durationMs = 15000, TextBox? box = null) => owner.SendSubtitle(text, durationMs, box);
+        public void Clear() => owner.ClearSubtitle();
     }
 
     private async void HandleFrame(Frame frame)

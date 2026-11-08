@@ -41,6 +41,8 @@ public enum DisconnectKind
     /// <summary>İkinci kullanıcının PS5'te giriş şifresi var; Uzaktan Oynatma şifre istiyor.</summary>
     LoginPasscode,
     Other,
+    /// <summary>Görüntüsü okunan pencere kapandı (pencere kaynağı).</summary>
+    WindowClosed,
 }
 
 public sealed record DisconnectReason(DisconnectKind Kind, string? Detail = null);

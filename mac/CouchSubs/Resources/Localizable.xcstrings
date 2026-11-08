@@ -4176,6 +4176,246 @@
           }
         }
       }
+    },
+    "Window": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Window"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pencere"
+          }
+        }
+      }
+    },
+    "No window chosen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No window chosen"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pencere seçilmedi"
+          }
+        }
+      }
+    },
+    "The window was closed. Choose a window again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The window was closed. Choose a window again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pencere kapandı. Yeniden bir pencere seçin."
+          }
+        }
+      }
+    },
+    "Video source": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video source"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüntü kaynağı"
+          }
+        }
+      }
+    },
+    "PS5 (Remote Play)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PS5 (Remote Play)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PS5 (Uzaktan Oynatma)"
+          }
+        }
+      }
+    },
+    "A window on this PC (Xbox app, browser, capture card, PC game)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A window on this PC (Xbox app, browser, capture card, PC game)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bilgisayardaki bir pencere (Xbox uygulaması, tarayıcı, yakalama kartı, PC oyunu)"
+          }
+        }
+      }
+    },
+    "Choose window": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose window"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pencere seç"
+          }
+        }
+      }
+    },
+    "When you start translating, Windows asks which window to read. Choose the game, the Xbox app, the browser tab with xbox.com/play or the capture card preview.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you start translating, Windows asks which window to read. Choose the game, the Xbox app, the browser tab with xbox.com/play or the capture card preview."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çeviriyi başlattığınızda Windows hangi pencerenin okunacağını sorar. Oyunu, Xbox uygulamasını, xbox.com/play açık tarayıcı sekmesini ya da yakalama kartı önizlemesini seçin."
+          }
+        }
+      }
+    },
+    "Show subtitles on this PC": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show subtitles on this PC"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altyazıları bu bilgisayarda göster"
+          }
+        }
+      }
+    },
+    "The Turkish subtitle appears at the bottom of this screen, on top of the game. Clicks pass through it and CouchSubs does not read it back.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Turkish subtitle appears at the bottom of this screen, on top of the game. Clicks pass through it and CouchSubs does not read it back."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Türkçe altyazı bu ekranın altında, oyunun üstünde görünür. Tıklamalar altyazının arkasına geçer ve CouchSubs onu yeniden okumaz."
+          }
+        }
+      }
+    },
+    "Playing on Xbox or on this PC?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playing on Xbox or on this PC?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xbox'ta ya da bu bilgisayarda mı oynuyorsunuz?"
+          }
+        }
+      }
+    },
+    "CouchSubs can also read the subtitles from a window on this computer: the Xbox app, xbox.com/play in a browser, a capture card preview or a PC game. You do not need a PS5 or a PlayStation account.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CouchSubs can also read the subtitles from a window on this computer: the Xbox app, xbox.com/play in a browser, a capture card preview or a PC game. You do not need a PS5 or a PlayStation account."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CouchSubs altyazıları bu bilgisayardaki bir pencereden de okuyabilir: Xbox uygulaması, tarayıcıda xbox.com/play, yakalama kartı önizlemesi ya da bir PC oyunu. PS5 ya da PlayStation hesabı gerekmez."
+          }
+        }
+      }
+    },
+    "Use a window on this PC": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a window on this PC"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bilgisayardaki bir pencereyi kullan"
+          }
+        }
+      }
+    },
+    "The TV is optional. If you play on this computer screen, press Continue.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The TV is optional. If you play on this computer screen, press Continue."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TV isteğe bağlıdır. Bu bilgisayarın ekranında oynuyorsanız Devam'a basın."
+          }
+        }
+      }
+    },
+    "This computer cannot capture windows. Windows 10 version 2004 or later is needed.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This computer cannot capture windows. Windows 10 version 2004 or later is needed."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bilgisayar pencere görüntüsü alamıyor. Windows 10 sürüm 2004 ya da daha yenisi gerekir."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

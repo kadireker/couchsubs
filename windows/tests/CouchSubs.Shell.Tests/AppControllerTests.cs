@@ -74,14 +74,38 @@ internal sealed class FakeTranslation : ITranslationModel
     }
 }
 
-internal sealed class FakeReader(Reading? lines = null) : ITextReader
+/// Okuyucu her okumada satırları yeniden sorar; test oyundaki altyazıyı okuma sürerken değiştirebilir.
+internal sealed class FakeReader(Func<Reading?> lines) : ITextReader
 {
-    public string Read(Frame image) => lines?.Text ?? "";
-    public Reading ReadLines(Frame image, bool deep) => lines ?? Reading.Empty;
+    public string Read(Frame image) => lines()?.Text ?? "";
+    public Reading ReadLines(Frame image, bool deep) => lines() ?? Reading.Empty;
+}
+
+/// Kullanıcının seçtiği sahte pencere; her başlatmada yeni bir sahte oturum verir.
+internal sealed class FakeCaptureTarget(string title) : ICaptureTarget
+{
+    public string Title { get; } = title;
+    public bool IsClosed { get; set; }
+    public List<FakeStream> Streams { get; } = [];
+    public IStreamSession MakeStream()
+    {
+        var stream = new FakeStream();
+        Streams.Add(stream);
+        return stream;
+    }
 }
 
 internal sealed class FakeServices : IAppServices
 {
+    /// Pencere seçicide sırayla seçilecek pencereler; boşsa kullanıcı vazgeçmiş sayılır.
+    public Queue<FakeCaptureTarget?> Windows { get; } = [];
+    public int Picks { get; private set; }
+    public Task<ICaptureTarget?> PickWindowAsync()
+    {
+        Picks++;
+        return Task.FromResult<ICaptureTarget?>(Windows.Count > 0 ? Windows.Dequeue() : null);
+    }
+
     public List<ConsoleInfo> Consoles { get; } = [new("192.168.1.253", "PS5-789", true)];
     public List<LgTv> Tvs { get; } = [new("LG TV", "192.168.1.153")];
     public RegisteredConsole? Registered { get; private set; }
@@ -201,7 +225,7 @@ internal sealed class FakeServices : IAppServices
     public ITextReader? MakeReader(string language)
     {
         ReaderLanguages.Add(language);
-        return HasOcr ? new FakeReader(ReaderLines) : null;
+        return HasOcr ? new FakeReader(() => ReaderLines) : null;
     }
 }
 
