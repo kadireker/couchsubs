@@ -32,6 +32,8 @@ public partial class ShellWindow : Window
         };
         // Bilgisayarda gösterilecek çeviriler küçük, üstte duran bir kutuda çıkar.
         controller.PcResultReady += PcResultWindow.Display;
+        // Pencere kaynağında altyazı monitörde de, oyunun üstündeki saydam katmanda gösterilir.
+        PcSubtitleOverlay.Attach(controller);
         Closed += (_, _) =>
         {
             controller.PcResultReady -= PcResultWindow.Display;

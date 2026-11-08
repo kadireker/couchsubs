@@ -6,12 +6,22 @@
              xmlns:t="clr-namespace:CouchSubs.App.Theme">
     <c:StepLayout Glyph="{x:Static c:Glyphs.Captions}" Title="{t:T 'Welcome to CouchSubs'}"
                   Message="{t:T 'CouchSubs reads the English subtitles of your PS5 games and shows a Turkish translation on your TV, on top of the game. You keep playing on the TV with your own controller.'}">
-        <c:Card Title="{t:T 'You will need:'}">
-            <StackPanel>
-                <TextBlock Text="{t:T 'A PS5 on the same network as this computer'}" Margin="0,0,0,8" />
-                <TextBlock Text="{t:T 'An LG TV with the CouchSubs TV app'}" Margin="0,0,0,8" />
-                <TextBlock Text="{t:T 'A free second PlayStation Network account'}" />
-            </StackPanel>
-        </c:Card>
+        <StackPanel>
+            <c:Card Title="{t:T 'You will need:'}">
+                <StackPanel>
+                    <TextBlock Text="{t:T 'A PS5 on the same network as this computer'}" Margin="0,0,0,8" />
+                    <TextBlock Text="{t:T 'An LG TV with the CouchSubs TV app'}" Margin="0,0,0,8" />
+                    <TextBlock Text="{t:T 'A free second PlayStation Network account'}" />
+                </StackPanel>
+            </c:Card>
+            <!-- PS5 kurulumunu atlayan yol: Xbox uygulaması, xbox.com/play, yakalama kartı ya da PC oyunu penceresi -->
+            <c:Card Title="{t:T 'Playing on Xbox or on this PC?'}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,0,0,12"
+                               Text="{t:T 'CouchSubs can also read the subtitles from a window on this computer: the Xbox app, xbox.com/play in a browser, a capture card preview or a PC game. You do not need a PS5 or a PlayStation account.'}" />
+                    <Button Content="{t:T 'Use a window on this PC'}" HorizontalAlignment="Left" Click="OnUseWindow" />
+                </StackPanel>
+            </c:Card>
+        </StackPanel>
     </c:StepLayout>
 </UserControl>

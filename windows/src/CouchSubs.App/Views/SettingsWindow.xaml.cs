@@ -39,6 +39,9 @@ public partial class SettingsWindow : Window
             GameLanguage.Items.Add(new ComboBoxItem { Content = Localizer.Current[name], Tag = code, IsSelected = code == settings.SourceLanguage });
         LanguageCard.Visibility = GameLanguage.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         (settings.FreeAreaTarget switch { ResultTarget.Pc => FreePc, ResultTarget.Both => FreeBoth, _ => FreeTv }).IsChecked = true;
+        (settings.Source == VideoSource.Window ? SourceWindow : SourcePs5).IsChecked = true;
+        ShowOnPcBox.IsChecked = settings.ShowOnPc;
+        ShowSource();
         Region.Frame = controller.LastFrame;
         ObsAddress.Text = $"http://localhost:{controller.ServerPort}/obs";
         ShowArea(0);
@@ -92,6 +95,34 @@ public partial class SettingsWindow : Window
             DeepLSave.IsEnabled = true;
         }
     }
+
+    /// <summary>Pencere seçimi ve bilgisayardaki altyazı yalnız pencere kaynağında gösterilir.</summary>
+    private void ShowSource()
+    {
+        WindowPanel.Visibility = controller.IsWindowSource ? Visibility.Visible : Visibility.Collapsed;
+        WindowTitle.Text = controller.CaptureTitle ?? Localizer.Current["No window chosen"];
+    }
+
+    private void OnSource(object sender, RoutedEventArgs e)
+    {
+        if (loading || sender is not RadioButton { Tag: string tag }) return;
+        controller.ChooseSource(Enum.Parse<VideoSource>(tag));
+        // PS5 henüz kurulmadıysa kurulum sihirbazı açıldı; ayarlar kapanır.
+        if (controller.Step != OnboardingStep.Done)
+        {
+            Close();
+            return;
+        }
+        ShowSource();
+    }
+
+    private async void OnChooseWindow(object sender, RoutedEventArgs e)
+    {
+        await controller.ChooseWindowAsync();
+        ShowSource();
+    }
+
+    private void OnShowOnPc(object sender, RoutedEventArgs e) => Update(s => s with { ShowOnPc = ShowOnPcBox.IsChecked == true });
 
     private void OnDeepLToggle(object sender, RoutedEventArgs e) => Update(s => s with { OnlineTranslation = DeepLOn.IsChecked == true });
 

@@ -44,9 +44,15 @@
             <!-- Durumlar -->
             <c:Card Margin="0,24,0,0">
                 <StackPanel>
-                    <c:StatusRow Title="PS5" Value="{Binding Ps5StatusText}" Tone="{Binding Ps5Tone}" />
-                    <Separator />
-                    <c:StatusRow Title="TV" Value="{Binding TvStatusText}" Tone="{Binding TvTone}" />
+                    <!-- Kaynak: PS5 ya da bu bilgisayardaki pencere (başlığıyla) -->
+                    <c:StatusRow Title="{Binding SourceTitle}" Value="{Binding Ps5StatusText}" Tone="{Binding Ps5Tone}" />
+                    <!-- Pencere kaynağında TV isteğe bağlıdır; kurulmadıysa satırı gösterilmez. -->
+                    <StackPanel Visibility="{Binding ShowsTvStatus, Converter={StaticResource VisibleIf}}">
+                        <Separator />
+                        <c:StatusRow Title="TV" Value="{Binding TvStatusText}" Tone="{Binding TvTone}" />
+                    </StackPanel>
+                    <Button Content="{t:T 'Choose window'}" HorizontalAlignment="Left" Margin="0,12,0,0" Click="OnChooseWindow"
+                            Visibility="{Binding IsWindowSource, Converter={StaticResource VisibleIf}}" />
                 </StackPanel>
             </c:Card>
 

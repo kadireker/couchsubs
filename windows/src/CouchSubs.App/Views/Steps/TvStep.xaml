@@ -8,6 +8,10 @@
     <c:StepLayout Glyph="{x:Static c:Glyphs.Tv}" Title="{t:T 'Connect your TV'}"
                   Message="{t:T 'Turn on the TV. When you press Connect, the TV asks for permission once — accept it with the remote. If the CouchSubs TV app is missing, this screen helps you install it.'}">
         <StackPanel>
+            <!-- Pencere kaynağında TV isteğe bağlıdır (Xbox TV'ye bağlıysa kurulur). -->
+            <TextBlock Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,0,0,16"
+                       Text="{t:T 'The TV is optional. If you play on this computer screen, press Continue.'}"
+                       Visibility="{Binding IsWindowSource, Converter={StaticResource VisibleIf}}" />
             <TextBlock x:Name="Done" Style="{StaticResource DoneText}" Margin="0,0,0,16" />
             <c:Card>
                 <StackPanel>

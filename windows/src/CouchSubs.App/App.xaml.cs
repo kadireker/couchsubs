@@ -45,13 +45,16 @@ public partial class App : Application
         RemotePlayDiagnostics.Start();
         ThemeManager.Apply(Resources);
         ThemeManager.Follow(Resources);
-        var controller = new AppController(new LiveServices(), new DpapiAppStore(), new FileSettingsStore(), new WindowsSleepGuard(),
+        var services = new LiveServices();
+        var controller = new AppController(services, new DpapiAppStore(), new FileSettingsStore(), new WindowsSleepGuard(),
             Localizer.Current, action => Dispatcher.BeginInvoke(action))
         {
             // Samsung'un sertifika için giriş sayfası varsayılan tarayıcıda açılır.
             OpenInBrowser = url => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true }),
         };
         var window = new ShellWindow(controller);
+        // Pencere seçici (pencere kaynağı) ana pencerenin üstünde açılır.
+        services.OwnerWindow = () => new System.Windows.Interop.WindowInteropHelper(window).Handle;
         MainWindow = window;
         window.Show();
     }

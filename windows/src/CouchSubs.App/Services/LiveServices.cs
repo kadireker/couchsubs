@@ -71,6 +71,29 @@ public sealed class LiveServices : IAppServices
 
     public IStreamSession MakeStream(RegisteredConsole console, byte[] accountId) => new StreamSession(console, accountId);
 
+    /// <summary>Pencere seçicinin üstünde açılacağı ana pencerenin tutamağı (HWND); uygulama açılışta atar.</summary>
+    public Func<IntPtr> OwnerWindow { get; set; } = () => IntPtr.Zero;
+
+    public async Task<ICaptureTarget?> PickWindowAsync()
+    {
+        if (!WindowCapture.IsSupported)
+        {
+            System.Windows.MessageBox.Show(Localizer.Current["This computer cannot capture windows. Windows 10 version 2004 or later is needed."], "CouchSubs",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return null;
+        }
+        try
+        {
+            return await WindowCapture.PickAsync(OwnerWindow());
+        }
+        catch (Exception error) when (error is System.Runtime.InteropServices.COMException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            // Seçici ya da Direct3D aygıtı açılamadı; çeviri başlamaz, uygulama çalışmaya devam eder.
+            RemotePlayDiagnostics.Note($"pencere seçilemedi: {error.Message}");
+            return null;
+        }
+    }
+
     public IKeeper MakeKeeper(LgTv tv, string? key, IReadOnlyDictionary<string, string> parameters, Func<bool> appConnected, Action<LgTv> onMoved)
     {
         if (tv.Brand == TvBrand.AndroidTv) return new IdleKeeper();

@@ -67,6 +67,9 @@ public partial class MainView : UserControl
 
     private void OnSettings(object sender, RoutedEventArgs e) => SettingsWindow.Open(Window.GetWindow(this), controller);
 
+    /// <summary>Pencere kaynağı: Windows'un pencere seçicisi açılır; çeviri sürüyorsa okuma yeni pencereye geçer.</summary>
+    private async void OnChooseWindow(object sender, RoutedEventArgs e) => await controller.ChooseWindowAsync();
+
     private void OnDownload(object sender, RoutedEventArgs e) => controller.StartModelDownload();
 
     /// <summary>

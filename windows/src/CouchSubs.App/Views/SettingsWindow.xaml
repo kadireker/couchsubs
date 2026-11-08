@@ -15,6 +15,28 @@
         </Border>
         <ScrollViewer VerticalScrollBarVisibility="Visible">
             <StackPanel Margin="32,0,32,24">
+                <!-- Görüntü kaynağı: PS5 ya da bu bilgisayardaki bir pencere (Xbox, tarayıcı, yakalama kartı, PC oyunu) -->
+                <c:Card Title="{t:T 'Video source'}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <RadioButton x:Name="SourcePs5" Content="{t:T 'PS5 (Remote Play)'}" GroupName="source" Margin="0,0,0,8"
+                                     Foreground="{DynamicResource textPrimaryBrush}" Checked="OnSource" Tag="Ps5" />
+                        <RadioButton x:Name="SourceWindow" Content="{t:T 'A window on this PC (Xbox app, browser, capture card, PC game)'}" GroupName="source"
+                                     Foreground="{DynamicResource textPrimaryBrush}" Checked="OnSource" Tag="Window" />
+                        <StackPanel x:Name="WindowPanel" Margin="0,12,0,0">
+                            <TextBlock Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,0,0,12"
+                                       Text="{t:T 'When you start translating, Windows asks which window to read. Choose the game, the Xbox app, the browser tab with xbox.com/play or the capture card preview.'}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <Button Content="{t:T 'Choose window'}" Click="OnChooseWindow" />
+                                <TextBlock x:Name="WindowTitle" Style="{StaticResource HintText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                            </StackPanel>
+                            <CheckBox x:Name="ShowOnPcBox" Content="{t:T 'Show subtitles on this PC'}" Foreground="{DynamicResource textPrimaryBrush}"
+                                      Checked="OnShowOnPc" Unchecked="OnShowOnPc" />
+                            <TextBlock Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                                       Text="{t:T 'The Turkish subtitle appears at the bottom of this screen, on top of the game. Clicks pass through it and CouchSubs does not read it back.'}" />
+                        </StackPanel>
+                    </StackPanel>
+                </c:Card>
+
                 <c:Card Title="{t:T 'On the TV'}">
                     <StackPanel>
                         <TextBlock Text="{t:T 'Text size'}" Margin="0,0,0,8" />
