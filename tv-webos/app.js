@@ -429,11 +429,55 @@
   // --- Türkçe dublaj ---
   // Bilgisayar her cümleyi seslendirip adresini gönderir; TV oyunun sesiyle birlikte çalar. Bilgisayar sıradakini
   // bu ses bitince gönderir; yine de üst üste gelirse eskisi kesilir.
+  //
+  // Ses Web Audio ile çalınır. <audio> öğesi TV'nin donanım medya oynatıcısını kullanır; Samsung'da (TVWindow) ve
+  // LG'de (ext://hdmi) bu oynatıcı HDMI görüntüsüyle aynı yolu paylaştığından seslendirme başlayınca oyun ekranı
+  // kararıyordu. Web Audio yalnız ses çıkışını kullanır. Desteklemeyen TV'de eski yola dönülür.
 
   var speech = null;
+  var speechToken = 0;
+  var audioContext = null;
+
+  function webAudio() {
+    if (audioContext) return audioContext;
+    var Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return null;
+    try { audioContext = new Context(); } catch (e) { audioContext = null; }
+    return audioContext;
+  }
 
   function playSpeech(url) {
     stopSpeech();
+    var token = ++speechToken;
+    var context = webAudio();
+    if (!context) return playSpeechElement(url);
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.responseType = 'arraybuffer';
+    request.onload = function () {
+      if (token !== speechToken) return;
+      if (request.status !== 200) return;
+      var decoded = function (buffer) {
+        if (token !== speechToken) return;
+        try {
+          if (context.state === 'suspended' && context.resume) context.resume();
+          var source = context.createBufferSource();
+          source.buffer = buffer;
+          source.connect(context.destination);
+          source.onended = function () { if (speech === source) speech = null; };
+          source.start(0);
+          speech = source;
+        } catch (e) {
+          speech = null;
+        }
+      };
+      // Eski WebKit'te decodeAudioData söz (Promise) döndürmez; geri çağrılı biçim her ikisinde de çalışır.
+      try { context.decodeAudioData(request.response, decoded, function () { /* çözülemeyen ses atlanır */ }); } catch (e) { /* yok */ }
+    };
+    request.send();
+  }
+
+  function playSpeechElement(url) {
     try {
       speech = new Audio(url);
       var played = speech.play();
@@ -444,8 +488,11 @@
   }
 
   function stopSpeech() {
+    speechToken++;
     if (!speech) return;
-    try { speech.pause(); } catch (e) { /* yok */ }
+    try {
+      if (speech.stop) speech.stop(0); else speech.pause();
+    } catch (e) { /* yok */ }
     speech = null;
   }
 
