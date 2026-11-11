@@ -18,6 +18,14 @@ public sealed record SigningProfile(string Directory, string AuthorP12, string D
 
     public bool Exists => File.Exists(AuthorP12) && File.Exists(DistributorP12) && Password.Length > 0;
 
+    /// <summary>
+    /// Yalnız tarihlere bakılır; anahtar diske yazılmasın diye geçici yüklenir. macOS EphemeralKeySet'i desteklemiyor
+    /// (PlatformNotSupportedException): Mac'te kayıtlı sertifikayla her kurulum, yani TV uygulamasının her güncellemesi
+    /// "This platform does not support loading with EphemeralKeySet" hatasıyla bitiyordu.
+    /// </summary>
+    internal static X509KeyStorageFlags KeyStorage =>
+        OperatingSystem.IsMacOS() ? X509KeyStorageFlags.DefaultKeySet : X509KeyStorageFlags.EphemeralKeySet;
+
     /// <summary>Sertifikalar hâlâ geçerli mi (bir gün pay bırakılarak)?</summary>
     public bool IsValid(DateTime now)
     {
@@ -26,7 +34,7 @@ public sealed record SigningProfile(string Directory, string AuthorP12, string D
         {
             foreach (var path in new[] { AuthorP12, DistributorP12 })
             {
-                using var certificate = X509CertificateLoader.LoadPkcs12FromFile(path, Password, X509KeyStorageFlags.EphemeralKeySet);
+                using var certificate = X509CertificateLoader.LoadPkcs12FromFile(path, Password, KeyStorage);
                 if (certificate.NotBefore > now || certificate.NotAfter < now.AddDays(1)) return false;
             }
             return true;

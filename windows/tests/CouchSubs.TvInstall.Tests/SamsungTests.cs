@@ -146,6 +146,26 @@ public class SamsungTests
         Assert.False(profile.IsValid(DateTime.UtcNow));
     }
 
+    [Fact]
+    public void SavedProfileIsUsable()
+    {
+        var directory = Directory.CreateTempSubdirectory().FullName;
+        const string password = "deneme-parola";
+        foreach (var name in new[] { "author.p12", "distributor.p12" })
+        {
+            using var key = RSA.Create(2048);
+            var request = new CertificateRequest("CN=CouchSubs", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+            File.WriteAllBytes(Path.Combine(directory, name), certificate.Export(X509ContentType.Pkcs12, password));
+        }
+        File.WriteAllText(Path.Combine(directory, "password.txt"), password);
+
+        var profile = SigningProfile.In(directory);
+        Assert.True(profile.Exists);
+        Assert.True(profile.IsValid(DateTime.UtcNow));
+        Assert.False(profile.IsValid(DateTime.UtcNow.AddYears(2)));
+    }
+
     private static X509Certificate2 SelfSigned(RSA key, string subject)
     {
         var request = new CertificateRequest(subject, key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
